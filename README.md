@@ -13,7 +13,7 @@ Cover crops: plants used to slow erosion, return nutrients to the soil, and help
 In this project, we’ll use inverse probability of treatment weighting (IPTW) to determine whether the use of cover crops causes an increase in crop yields.
 
 ## How to use: 
-Simply open the notebook file
+Open and run notebook.nb.html
 
 ## Technologies: 
 - R: main language
