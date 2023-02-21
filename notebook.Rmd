@@ -1,0 +1,147 @@
+---
+title: "Crop Yield"
+output: html_notebook
+---
+
+# Import libraries
+```{r, message=FALSE}
+library(cobalt)
+library(WeightIt)
+library(lmtest)
+library(sandwich)
+```
+
+# Task 1
+```{r}
+# Load file as dataframe
+farm_df = read.csv("farms.csv")
+```
+
+# Task 2
+```{r}
+# Inspect dataframe
+print(head(farm_df))
+```
+
+# Task 3
+```{r}
+# Balance plot for the average age
+bal.plot(
+  x = cover_10 ~ age_avg, #formula
+  data = farm_df, #dataset
+  var.name = "age_avg", #variable
+  colors = c("#E69F00", "#009E73") #set fill colors
+)
+```
+### Do the treatment and control distributions appear to be centered in the same location and have similar spreads? Spreads are similar, and mean difference is similar, quite balanced.
+
+# Task 4
+```{r}
+# Balance plot for geographic region
+bal.plot(
+  x = cover_10 ~ region, #formula
+  data = farm_df, #dataset
+  var.name = "region", #variable
+  colors = c("#E69F00", "#009E73") #set fill colors
+)
+```
+### Are the proportions of counties in the treatment versus control groups similar across the four regions? No, the proportions of counties in the treatment versus control groups are not similar across the four regions. In the North Central region, there is a ~50/50 proportion, in the Northeast region a ~95/5, in the South region a ~55/45 and in the West region a ~80/20 proportion.
+
+# Task 5
+```{r}
+# Balance table to show SMD and variance ratio of between groups
+bal.tab(
+  x = cover_10 ~ region + total_avg + age_avg + experience_avg + insurance_avg + easement_p+ conservation_till_avg + fertilizer_per_area, #formula
+  data = farm_df, #dataset
+  disp.v.ratio = TRUE, #display variance ratio
+  binary = "std" #SMDs for binary variables
+)
+```
+
+# Task 6
+```{r}
+# Calculate IPTW weights with initial propensity score model
+farm_iptw = weightit(
+  formula = cover_10 ~ region + total_avg + insurance_avg + fertilizer_per_area,
+  data = farm_df,
+  method =  "ps",
+  estimand = "ATE"
+)
+print(farm_iptw)
+```
+
+# Task 7
+```{r}
+# Love plot with threshold lines to show SMD balance before and after weighting
+love.plot(
+  x = farm_iptw, #weightit object
+  binary = "std", #use SMD
+  thresholds = c(m = 0.1), #guidelines
+  colors = c("#E69F00", "#009E73") #sets fill colors
+)
+```
+
+# Task 8
+```{r}
+# Re-calculate IPTW weights with updated propensity score model
+farm_iptw2 = weightit(
+  formula = cover_10 ~ region + total_avg + insurance_avg + age_avg + experience_avg + easement_p + conservation_till_avg,
+  data = farm_df,
+  method =  "ps",
+  estimand = "ATE"
+)
+print(farm_iptw2)
+```
+
+# Task 9
+```{r}
+# Plot Love plot of SMDs with threshold lines to show balance before and after IPTW procedure
+love.plot(
+  x = farm_iptw2, #weightit object
+  binary = "std", #use SMD
+  thresholds = c(m = 0.1), #guidelines
+  colors = c("#E69F00", "#009E73") #sets fill colors
+)
+```
+
+# Task 10
+```{r}
+# Balance plot of propensity scores before and after weighting
+# Balance plot for propensity scores
+bal.plot(
+  x = farm_iptw2, #weightit object
+  var.name = "prop.score", #propensity scores
+  which = "both", #before and after
+  colors = c("#E69F00", "#009E73") #sets fill colors
+)
+```
+### Do the distributions of the weighted propensity scores look closer to identical, and are they overlapping each other? Yes the distributions of the weighted propensity scores look closer to identical and they are overlapping each other more.
+
+# Task 11
+```{r}
+# Fit outcome regression model
+yield_mod <- glm(
+  formula = total_yield ~ cover_10 + region + total_avg + insurance_avg + age_avg + experience_avg + easement_p + conservation_till_avg,
+  data = farm_df,
+  weights = farm_iptw2$weights 
+)
+```
+
+# Task 12
+```{r}
+# Estimate regression coefficients for weighted outcome model with robust standard errors
+coeftest(
+  yield_mod, #weighted outcome model
+  vcov. = vcovHC #robust standard errors
+)
+```
+
+# Task 13
+
+## Results Interpretation: if at least 10% of farms in a county employ cover crops (plants used to slow erosion, return nutrients to the soil, and help smother weeds and control pests), the average total yield of wheat increases by 3.6 bushels per acre.
+## The Average Treatment Effect (ATE) represents the average effect of the treatment on the entire population, including both those who received the treatment and those who did not. It is an estimate because it is not possible to actually see the effect on the whole population.
+## The Average Treatment Effect on the Treated (ATT) represents the effect of the treatment on only those who received the treatment.
+
+
+
+
